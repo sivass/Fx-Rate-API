@@ -1,0 +1,6 @@
+[
+  {
+    "type": "sqlite",
+    "path": "c:\\Users\\siva\\JavaScript\\project\\bank\\backend\\prisma\\dev.db"
+  }
+]
