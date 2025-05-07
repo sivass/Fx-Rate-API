@@ -1,37 +1,33 @@
 import { Request, Response, Router } from "express";
 import { FxService } from "../services/fx.service";
-
+import {
+  baseCurrencySchema,
+  currencyPairSchema,
+  ratesPaginationSchema,
+} from "../validations/fx.validations";
+import { validateRequest } from "../middleware/validation.middleware";
+import { z } from "zod";
 const fxRouter = Router();
 
 // Get all exchange rates for a base currency
-fxRouter.get("/rates", async (req, res) => {
-  try {
-    const baseCurrency = (req.query.base as string) || "USD";
-    const rates = await FxService.getExchangeRates(baseCurrency);
-    res.json(rates);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch exchange rates" });
-  }
-});
-
-// Get specific exchange rate between two currencies
-fxRouter.get("/rate", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const fromRow = req.query.from;
-    const toRow = req.query.to;
-
-    const isCurrencyCode = (value: any) =>
-      typeof value === "string" && /^[A-Z]{3}$/.test(value.toUpperCase());
-
-    if (!isCurrencyCode(fromRow) || !isCurrencyCode(toRow))  {
-      res.status(400).json({
-        message:
-          "Missing or invalid query parameters: from and to must be strings",
-      });
+fxRouter.get(
+  "/rates",
+  validateRequest(z.object({ base: baseCurrencySchema.optional() })),
+  async (req, res): Promise<void> => {
+    try {
+      const validatedData = req.validatedData as { base?: string };
+      const baseCurrency = validatedData.base || "USD";
+      const rates = await FxService.getExchangeRates(baseCurrency);
+      res.json(rates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch exchange rates" });
     }
-    const from: string = typeof fromRow === "string" ? fromRow : "";
-    const to: string = typeof toRow === "string" ? toRow : "";
-
+  }
+);
+// Get specific exchange rate between two currencies
+fxRouter.get("/rate", validateRequest(currencyPairSchema), async (req, res) => {
+  try {
+    const { from, to } = req.validatedData as { from: string; to: string };
     const rate = await FxService.getExchangeRate(from, to);
     res.json({ from, to, rate });
   } catch (error) {
@@ -40,24 +36,29 @@ fxRouter.get("/rate", async (req: Request, res: Response): Promise<void> => {
 });
 
 // Get paginated exchange rates
-fxRouter.get("/rates/paginated", async (req, res) => {
-  try {
-    const baseCurrency = (req.query.base as string) || "USD";
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-
-    const rates = await FxService.getExchangeRatesWithPagination(
-      baseCurrency,
-      page,
-      limit
-    );
-    res.json(rates);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to fetch paginated exchange rates" });
+fxRouter.get(
+  "/rates/paginated",
+  validateRequest(ratesPaginationSchema),
+  async (req, res) => {
+    try {
+      const { base, page, limit } = req.validatedData as {
+        base: string;
+        page: number;
+        limit: number;
+      };
+      const rates = await FxService.getExchangeRatesWithPagination(
+        base,
+        page,
+        limit
+      );
+      res.json(rates);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Failed to fetch paginated exchange rates" });
+    }
   }
-});
+);
 
 // Cache exchange rates (admin endpoint)
 fxRouter.post("/cache", async (req, res) => {
