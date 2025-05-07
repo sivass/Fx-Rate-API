@@ -7,6 +7,7 @@ import { config } from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/error.middleware';
 import authRouter from './routes/auth.routes';
+import fxRouter from './routes/fx.routes';
 import prisma from './db/prisma';
 
 config({ path: '.env' });
@@ -34,6 +35,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRouter);
+app.use("/api/fx", fxRouter);
 
 // Health check
 app.get("/api/v1/health", (req, res) => {
